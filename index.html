@@ -62,6 +62,11 @@
         <button onclick="downloadVideo('full')">Download Full Video</button>
         <button onclick="downloadVideo('video')">Download Video Only</button>
         <button onclick="downloadVideo('audio')">Download Audio Only</button>
+        <button onclick="downloadVideo('description')">Download Description</button>
+        <button onclick="downloadVideo('title')">Download Title</button>
+        <button onclick="downloadVideo('thumbnail')">Download Thumbnail</button>
+        <button onclick="downloadVideo('tags')">Download Tags</button>
+        <button onclick="downloadVideo('all')">Download All</button>
     </div>
     <div id="status"></div>
     <div class="progress-container">
@@ -102,7 +107,12 @@
                 });
                 const result = await response.json();
                 if (result.success) {
-                    statusDiv.innerHTML = `Success! File saved: <a href="${result.downloadUrl}" download>${result.filename}</a>`;
+                    if (type === 'all') {
+                        statusDiv.innerHTML = 'Success! Files saved:<br>' + 
+                            result.filenames.map(f => `<a href="${f.downloadUrl}" download="${f.filename}">${f.filename}</a>`).join('<br>');
+                    } else {
+                        statusDiv.innerHTML = `Success! File saved: <a href="${result.downloadUrl}" download="${result.filename}">${result.filename}</a>`;
+                    }
                 } else {
                     statusDiv.textContent = `Error: ${result.error}`;
                     progressBar.style.width = '0%';
