@@ -1,0 +1,88 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Downloader</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 20px auto; text-align: center; }
+        input { width: 100%; padding: 10px; margin: 10px 0; }
+        button { padding: 10px 20px; margin: 5px; background-color: #28a745; color: white; border: none; cursor: pointer; }
+        button:hover { background-color: #218838; }
+        #status { margin-top: 20px; color: #333; }
+    </style>
+</head>
+<body>
+    <h1>Video Downloader</h1>
+    <input type="text" id="videoUrl" placeholder="Enter YouTube URL (e.g., https://www.youtube.com/watch?v=hEksVS3Jx90)">
+    <div>
+        <button onclick="downloadVideo('full')">Download Full Video</button>
+        <button onclick="downloadVideo('video')">Download Video Only</button>
+        <button onclick="downloadVideo('audio')">Download Audio Only</button>
+    </div>
+    <div id="status"></div>
+
+    <script>
+        async function downloadVideo(type) {
+            const url = document.getElementById('videoUrl').value;
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = 'Processing...';
+
+            try {
+                const response = await fetch('/download', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url, type })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    statusDiv.textContent = `Success! File saved in Downloads: ${result.filename}`;
+                } else {
+                    statusDiv.textContent = `Error: ${result.error}`;
+                }
+            } catch (err) {
+                statusDiv.textContent = `Error: ${err.message}`;
+            }
+        }
+    </script>
+</body>
+</html>
