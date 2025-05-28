@@ -49,6 +49,10 @@
         button { padding: 10px 20px; margin: 5px; background-color: #28a745; color: white; border: none; cursor: pointer; }
         button:hover { background-color: #218838; }
         #status { margin-top: 20px; color: #333; }
+        a { color: #007bff; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .progress-container { width: 100%; background-color: #f3f3f3; border-radius: 5px; margin: 10px 0; }
+        .progress-bar { width: 0%; height: 20px; background-color: #28a745; border-radius: 5px; transition: width 0.3s; }
     </style>
 </head>
 <body>
@@ -60,12 +64,35 @@
         <button onclick="downloadVideo('audio')">Download Audio Only</button>
     </div>
     <div id="status"></div>
+    <div class="progress-container">
+        <div id="progressBar" class="progress-bar"></div>
+    </div>
 
     <script>
+        const ws = new WebSocket('ws://localhost:3000');
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.progress) {
+                const progressBar = document.getElementById('progressBar');
+                progressBar.style.width = `${data.progress}%`;
+                document.getElementById('status').textContent = `Downloading: ${data.progress}%`;
+            }
+        };
+
+        ws.onopen = () => {
+            console.log('WebSocket connected');
+        };
+
+        ws.onerror = (error) => {
+            console.error('WebSocket error:', error);
+        };
+
         async function downloadVideo(type) {
             const url = document.getElementById('videoUrl').value;
             const statusDiv = document.getElementById('status');
+            const progressBar = document.getElementById('progressBar');
             statusDiv.textContent = 'Processing...';
+            progressBar.style.width = '0%';
 
             try {
                 const response = await fetch('/download', {
@@ -75,12 +102,14 @@
                 });
                 const result = await response.json();
                 if (result.success) {
-                    statusDiv.textContent = `Success! File saved in Downloads: ${result.filename}`;
+                    statusDiv.innerHTML = `Success! File saved: <a href="${result.downloadUrl}" download>${result.filename}</a>`;
                 } else {
                     statusDiv.textContent = `Error: ${result.error}`;
+                    progressBar.style.width = '0%';
                 }
             } catch (err) {
                 statusDiv.textContent = `Error: ${err.message}`;
+                progressBar.style.width = '0%';
             }
         }
     </script>
